@@ -3,8 +3,7 @@
 const { Schema, model } = require('mongoose');
 const bcrypt = require('bcrypt');
 
-const bookSchema = require('./Book').schema;
-
+// Schema to create User model
 const userSchema = new Schema(
   {
     username: {
@@ -17,13 +16,29 @@ const userSchema = new Schema(
       type: String,
       required: true,
       unique: true,
-      match: [/.+@.+\..+/, 'Must match a valid email address!'],
+      match: [/.+@.+\..+/, 'Must use a valid email address'],
     },
     password: {
       type: String,
       required: true,
+      minlength: 5,
     },
-    savedBooks: [bookSchema],
+    savedBooks: [
+      {
+        bookId: {
+          type: String,
+          required: true,
+        },
+        authors: [String],
+        description: String,
+        title: {
+          type: String,
+          required: true,
+        },
+        image: String,
+        link: String,
+      },
+    ],
   },
   {
     toJSON: {
@@ -32,7 +47,7 @@ const userSchema = new Schema(
   }
 );
 
-// Hash user password
+// set up pre-save middleware to create password
 userSchema.pre('save', async function (next) {
   if (this.isNew || this.isModified('password')) {
     const saltRounds = 10;
@@ -42,16 +57,12 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Compare incoming password with hashed password
+// Compare the incoming password with the hashed password
 userSchema.methods.isCorrectPassword = async function (password) {
   return bcrypt.compare(password, this.password);
 };
 
-// Virtual for book count
-userSchema.virtual('bookCount').get(function () {
-  return this.savedBooks.length;
-});
-
+// Create the User model using the userSchema
 const User = model('User', userSchema);
 
 module.exports = User;

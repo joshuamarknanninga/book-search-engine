@@ -11,10 +11,8 @@ const resolvers = {
         const userData = await User.findById(context.user._id)
           .select('-__v -password')
           .populate('savedBooks');
-
         return userData;
       }
-
       throw new AuthenticationError('Not logged in');
     },
   },
@@ -22,22 +20,17 @@ const resolvers = {
     addUser: async (parent, args) => {
       const user = await User.create(args);
       const token = signToken(user);
-
       return { token, user };
     },
     login: async (parent, { email, password }) => {
       const user = await User.findOne({ email });
-
       if (!user) {
         throw new AuthenticationError('Incorrect credentials');
       }
-
       const correctPw = await user.isCorrectPassword(password);
-
       if (!correctPw) {
         throw new AuthenticationError('Incorrect credentials');
       }
-
       const token = signToken(user);
       return { token, user };
     },
@@ -48,10 +41,8 @@ const resolvers = {
           { $addToSet: { savedBooks: input } },
           { new: true, runValidators: true }
         );
-
         return updatedUser;
       }
-
       throw new AuthenticationError('You need to be logged in!');
     },
     removeBook: async (parent, { bookId }, context) => {
@@ -61,10 +52,8 @@ const resolvers = {
           { $pull: { savedBooks: { bookId } } },
           { new: true }
         );
-
         return updatedUser;
       }
-
       throw new AuthenticationError('You need to be logged in!');
     },
   },
