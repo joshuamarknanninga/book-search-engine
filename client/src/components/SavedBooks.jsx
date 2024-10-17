@@ -1,5 +1,8 @@
 // SavedBooks.jsx (Client)
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@apollo/client';
+import { GET_ME } from '../utils/queries';
+import { REMOVE_BOOK } from '../utils/mutations';
 import {
   Container,
   Card,
@@ -8,69 +11,43 @@ import {
   Col
 } from 'react-bootstrap';
 
-import { getMe, deleteBook } from '../utils/API';
-import Auth from '../utils/auth';
-import { removeBookId } from '../utils/localStorage';
-
 const SavedBooks = () => {
-  const [userData, setUserData] = useState({});
-
-  // use this to determine if `useEffect()` hook needs to run again
-  const userDataLength = Object.keys(userData).length;
-
-  useEffect(() => {
-    const getUserData = async () => {
+  const { loading, error, data } = useQuery(GET_ME);
+  const [removeBook, { error: removeError }] = useMutation(REMOVE_BOOK, {
+    // Update the cache after removing a book
+    update(cache, { data: { removeBook } }) {
       try {
-        const token = Auth.loggedIn() ? Auth.getToken() : null;
-
-        if (!token) {
-          return false;
-        }
-
-        const response = await getMe(token);
-
-        if (!response.ok) {
-          throw new Error('something went wrong!');
-        }
-
-        const user = await response.json();
-        setUserData(user);
-      } catch (err) {
-        console.error(err);
+        cache.writeQuery({
+          query: GET_ME,
+          data: { me: removeBook },
+        });
+      } catch (e) {
+        console.error('Error updating cache after removing book:', e);
       }
-    };
+    },
+  });
 
-    getUserData();
-  }, [userDataLength]);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
-  // create function that accepts the book's mongo _id value as param and deletes the book from the database
+  if (error) {
+    return <div>Error loading saved books.</div>;
+  }
+
+  const userData = data?.me;
+
   const handleDeleteBook = async (bookId) => {
-    const token = Auth.loggedIn() ? Auth.getToken() : null;
-
-    if (!token) {
-      return false;
-    }
-
     try {
-      const response = await deleteBook(bookId, token);
-
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const updatedUser = await response.json();
-      setUserData(updatedUser);
-      // upon success, remove book's id from localStorage
-      removeBookId(bookId);
+      await removeBook({
+        variables: { bookId },
+      });
+      alert('Book removed successfully!');
     } catch (err) {
       console.error(err);
+      alert('Error removing book.');
     }
   };
-
-  // if data isn't here yet, say so
-  if (!userDataLength) {
-    return <h2>LOADING...</h2>;
-  }
 
   return (
     <>
@@ -81,19 +58,19 @@ const SavedBooks = () => {
       </div>
       <Container>
         <h2 className="pt-5">
-          {userData.savedBooks.length
+          {userData?.savedBooks.length
             ? `Viewing ${userData.savedBooks.length} saved ${userData.savedBooks.length === 1 ? 'book' : 'books'}:`
             : 'You have no saved books!'}
         </h2>
         <Row>
-          {userData.savedBooks.map((book) => {
+          {userData?.savedBooks.map((book) => {
             return (
               <Col md="4" key={book.bookId}>
                 <Card border='dark'>
                   {book.image ? <Card.Img src={book.image} alt={`The cover for ${book.title}`} variant='top' /> : null}
                   <Card.Body>
                     <Card.Title>{book.title}</Card.Title>
-                    <p className='small'>Authors: {book.authors}</p>
+                    <p className='small'>Authors: {book.authors.join(', ')}</p>
                     <Card.Text>{book.description}</Card.Text>
                     <Button className='btn-block btn-danger' onClick={() => handleDeleteBook(book.bookId)}>
                       Delete this Book!
@@ -105,24 +82,55 @@ const SavedBooks = () => {
           })}
         </Row>
       </Container>
+      {removeError && <p>Error removing book. Please try again.</p>}
     </>
   );
+};
+
+// Optional: Add some basic styling
+const styles = {
+  bookContainer: {
+    border: '1px solid #ccc',
+    padding: '16px',
+    marginBottom: '16px',
+    borderRadius: '8px',
+  },
+  bookImage: {
+    maxWidth: '150px',
+    height: 'auto',
+  },
+  link: {
+    display: 'block',
+    marginTop: '8px',
+    marginBottom: '8px',
+    color: '#007bff',
+    textDecoration: 'none',
+  },
+  removeButton: {
+    padding: '8px 16px',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
 };
 
 export default SavedBooks;
 
 
 // index.js (Server)
-import router from 'express';
+import express from 'express';
 import userRoutes from './api/user-routes';
 
+const router = express.Router();
 router.use('/users', userRoutes);
 
 export default router;
 
 
 // user-routes.js (Server)
-import router from 'express';
+import express from 'express';
 import {
   createUser,
   getSingleUser,
@@ -134,6 +142,7 @@ import {
 // import middleware
 import { authMiddleware } from '../../utils/auth';
 
+const router = express.Router();
 // put authMiddleware anywhere we need to send a token for verification of user
 router.route('/').post(createUser).put(authMiddleware, saveBook);
 
