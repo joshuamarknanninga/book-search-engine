@@ -6,21 +6,12 @@
     "scripts": {
         "start": "concurrently \"npm run server\" \"npm run client\"",
         "server": "cd server && nodemon server.js",
-        "client": "cd client && craco start",
+        "client": "cd client && npm run dev",
         "install-all": "npm install && cd client && npm install && cd ../server && npm install",
         "dev": "nodemon server.js"
-        
     },
     "dependencies": {
-        "apollo-server-express": "^3.11.1",
-        "bcrypt": "^5.1.1",
-        "cors": "^2.8.5",
-        "dotenv": "^16.4.5",
-        "express": "^4.21.0",
-        "graphql": "^16.9.0",
-        "iconv-lite": "^0.6.3",
-        "jsonwebtoken": "^9.0.2",
-        "mongoose": "^7.8.2"
+        "concurrently": "^9.0.1"
     },
     "devDependencies": {
         "nodemon": "^2.0.22"

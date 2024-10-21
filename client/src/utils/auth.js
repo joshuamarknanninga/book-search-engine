@@ -1,7 +1,7 @@
 // server/utils/auth.js
 
 const jwt = require('jsonwebtoken');
-require('dotenv').config(); // Load environment variables
+// require('dotenv').config(); // Load environment variables
 
 const secret = process.env.JWT_SECRET || 'mysecretsshhhhh'; // Use environment variable
 const expiration = '2h';

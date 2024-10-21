@@ -10,6 +10,7 @@ import SearchBooks from './components/SearchBooks';
 import SavedBooks from './components/SavedBooks';
 import Navbar from './components/Navbar';
 import Auth from './utils/auth';
+import React from 'react';
 
 // Create an HTTP link to the GraphQL server
 const httpLink = createHttpLink({
