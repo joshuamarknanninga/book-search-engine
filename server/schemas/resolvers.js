@@ -1,28 +1,49 @@
 const { AuthenticationError } = require('apollo-server-express');
+const { User, Book } = require('../models');
 const { signToken } = require('../utils/auth');
 
 const resolvers = {
-  Mutation: {
-    login: async (parent, { email, password }) => {
-      const user = await User.findOne({ email });
-
-      if (!user) {
-        throw new AuthenticationError('Incorrect credentials');
+  Query: {
+    me: async (_, __, context) => {
+      if (context.user) {
+        return User.findById(context.user._id).populate('savedBooks');
       }
-
-      const correctPw = await user.isCorrectPassword(password);
-
-      if (!correctPw) {
-        throw new AuthenticationError('Incorrect credentials');
-      }
-
-      const token = signToken(user);
-      return { token, user };
+      throw new AuthenticationError('You need to be logged in!');
     },
-    addUser: async (parent, args) => {
+  },
+  Mutation: {
+    addUser: async (_, args) => {
       const user = await User.create(args);
       const token = signToken(user);
       return { token, user };
+    },
+    login: async (_, { email, password }) => {
+      const user = await User.findOne({ email });
+      if (!user || !(await user.isCorrectPassword(password))) {
+        throw new AuthenticationError('Invalid credentials');
+      }
+      const token = signToken(user);
+      return { token, user };
+    },
+    saveBook: async (_, { bookData }, context) => {
+      if (context.user) {
+        return User.findByIdAndUpdate(
+          context.user._id,
+          { $addToSet: { savedBooks: bookData } },
+          { new: true }
+        ).populate('savedBooks');
+      }
+      throw new AuthenticationError('You need to be logged in!');
+    },
+    removeBook: async (_, { bookId }, context) => {
+      if (context.user) {
+        return User.findByIdAndUpdate(
+          context.user._id,
+          { $pull: { savedBooks: { bookId } } },
+          { new: true }
+        ).populate('savedBooks');
+      }
+      throw new AuthenticationError('You need to be logged in!');
     },
   },
 };
